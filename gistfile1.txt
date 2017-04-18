@@ -1,0 +1,93 @@
+create table test_case (
+
+  col_pk    integer        not null,
+
+  col_i1    integer        not null,
+
+  col_d1    date           not null,
+
+  col_c1    varchar2(100)  not null,
+
+  col_i2    integer        not null,
+
+  col_d2    date           not null,
+
+  col_c2    varchar2(100)  not null
+
+);
+
+
+create or replace function repeat (c char, n integer) return varchar
+
+is
+
+s varchar2(100) := '';
+
+begin
+
+  for i in 1 .. n loop
+
+    s := s || c;
+
+  end loop;
+
+  return (s);
+
+end;
+
+declare
+
+row_count integer := 1000000;
+
+begin
+
+  for i in 1 .. row_count loop
+
+    insert into test_case
+
+      values (i, mod(i,100), sysdate-mod(i,100),
+
+              repeat(substr('ABCDEFGHIJ',mod(i,10),1),10),
+
+              mod(i,100), sysdate-mod(i,100),
+
+              repeat(substr('ABCDEFGHIJ',mod(i,10),1),10)
+
+             );
+
+    if (mod(i,100) = 0) then
+
+      commit;
+
+    end if;
+
+  end loop;
+
+end;
+
+select count(*) from test_case
+select * from test_case
+
+exec DBMS_STATS.GATHER_TABLE_STATS (ownname => user,tabname => 'TEST_CASE', method_opt => 'FOR ALL INDEXED COLUMNS SIZE SKEWONLY');
+
+EXPLAIN PLAN SET STATEMENT_ID = 'bad1' FOR select * from test_case where col_d2 = (select min(col_d2) from test_case where col_pk <= 1000 or col_pk > 990000)
+
+select * from PLAN_TABLE
+
+  
+create unique index test_case_i1 on test_case (col_pk);
+create        index test_case_i2 on test_case (col_i1);
+create        index test_case_i3 on test_case (col_d1);
+create        index test_case_i4 on test_case (col_c1);
+
+drop index test_case_i1;
+drop index test_case_i2;
+drop index test_case_i3;
+drop index test_case_i4;
+
+
+SELECT * FROM TABLE (DBMS_XPLAN.DISPLAY('PLAN_TABLE', 'bad1', 'BASIC +note') );
+SELECT * FROM TABLE (DBMS_XPLAN.DISPLAY('PLAN_TABLE', 'bad1', 'TYPICAL ') );
+SELECT * FROM TABLE (DBMS_XPLAN.DISPLAY('PLAN_TABLE', 'bad1', 'ALL') );
+
+http://www.oracle.com/technetwork/database/bi-datawarehousing/twp-explain-the-explain-plan-052011-393674.pdf
