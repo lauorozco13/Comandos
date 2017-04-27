@@ -91,3 +91,7 @@ SELECT * FROM TABLE (DBMS_XPLAN.DISPLAY('PLAN_TABLE', 'bad1', 'TYPICAL ') );
 SELECT * FROM TABLE (DBMS_XPLAN.DISPLAY('PLAN_TABLE', 'bad1', 'ALL') );
 
 http://www.oracle.com/technetwork/database/bi-datawarehousing/twp-explain-the-explain-plan-052011-393674.pdf
+
+https://docs.oracle.com/cd/E11882_01/backup.112/e10642/rcmquick.htm#BRADV89348
+
+http://www.thegeekstuff.com/2013/08/oracle-rman-backup
