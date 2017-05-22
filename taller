@@ -1,0 +1,176 @@
+SELECT V.NumberVehicle, V.MileageVehicle, V.ModelVehicle, V.CurrentValueVehicle, 
+           V.ReplacementValueVehicle, V.StateVehicle, VT.SpecialQualification,
+           FunTotalServices(V.IdVehicle), FunSumTotalServices(V.IdVehicle)
+    FROM VehicleTypes VT INNER JOIN Vehicles V
+      ON VT.IdVehicleType = V.VehicleType
+    WHERE VT.DescriptionVehicleType IN ('Car', 'Light rigid heavy vehicle', 
+                                     'Medium rigid heavy vehicle',
+                                     'Heavy rigid vehicle', 'Tractor')
+          AND EXTRACT(YEAR FROM V.BoughtDateVehicle) >= EXTRACT(YEAR FROM CURRENT_DATE)-2;   
+  
+CREATE OR REPLACE FUNCTION FunTotalServices(IdVehicle IN number)
+RETURN number IS
+   total number(5) := 0;
+BEGIN
+   SELECT count(*) into total 
+   FROM Services
+   WHERE Vehicle = IdVehicle;
+   
+   RETURN total;
+END;  
+  
+CREATE OR REPLACE FUNCTION FunSumTotalServices(IdVehicle IN number)
+RETURN number IS
+   total number(16,2) := 0;
+BEGIN
+   SELECT Sum(TotalService) into total 
+   FROM Services
+   WHERE Vehicle = IdVehicle;
+   
+   RETURN total;
+END;
+
+CREATE OR REPLACE FUNCTION FunCreateNameService(VehicleId IN number)
+RETURN VARCHAR IS
+   response VARCHAR(200) := '';
+   mileage VARCHAR(200) := '';
+   exist NUMBER(1) := 0;
+BEGIN
+    SELECT TRUNC(MileageVehicle/3000)*3000 INTO mileage 
+    FROM Vehicles WHERE IdVehicle = VehicleId;
+    
+    DBMS_OUTPUT.put_line(mileage);
+    SELECT COUNT(*) INTO exist FROM Services WHERE NameService = (mileage||'_service');
+    
+    DBMS_OUTPUT.put_line(exist);
+    IF exist >= 1
+    THEN
+      DBMS_OUTPUT.put_line('Response empty');
+      RETURN response;
+    END IF;
+    
+    DBMS_OUTPUT.put_line('Response ok');
+    SELECT mileage || '_service' INTO response FROM DUAL;
+    
+    DBMS_OUTPUT.put_line(response);
+    RETURN response;
+END;  
+
+SELECT FunCreateNameService(1) FROM DUAL;
+
+
+CREATE OR REPLACE PROCEDURE ProcInsertNewService(VehicleId IN number) AS
+  response NUMBER := 0;
+  service_name VARCHAR(200);
+BEGIN
+    SELECT FunCreateNameService(VehicleId) INTO service_name FROM DUAL;
+ 
+    DBMS_OUTPUT.PUT_LINE('SERVICE NAME: '||service_name);
+    IF NVL(service_name, NULL) IS NOT NULL
+    THEN
+        INSERT INTO Services (NameService, Vehicle, IssueDate, DescriptionService, StatusService, TotalService) 
+           VALUES (service_name, VehicleId, CURRENT_DATE,'New Service','Pending', 0);
+           
+        INSERT INTO ServiceDetails (Service, ServiceType, StatusServiceDetail, ValueServiceDetail)
+        SELECT SeqServices.currval, IdServiceType, 'Pending', 0
+        FROM ServiceTypes;
+        
+        COMMIT;
+    END IF;
+END;
+
+EXEC ProcInsertNewService(2);
+
+SELECT * FROM Services;
+SELECT * FROM ServiceDetails;
+
+
+SELECT V.CurrentValueVehicle, V.CurrentValueVehicle - ((V.CurrentValueVehicle / 100) * 2)
+    FROM VehicleTypes VT INNER JOIN Vehicles V
+      ON VT.IdVehicleType = V.VehicleType
+    WHERE VT.DescriptionVehicleType IN ('Moped', 'Moped', 'Trike motorcycle');
+    
+SELECT V.CurrentValueVehicle, V.CurrentValueVehicle - ((V.CurrentValueVehicle / 100) * 3)
+    FROM VehicleTypes VT INNER JOIN Vehicles V
+      ON VT.IdVehicleType = V.VehicleType
+    WHERE VT.DescriptionVehicleType IN ('Car', 'Light rigid heavy vehicle', 'Medium rigid heavy vehicle');
+    
+SELECT V.CurrentValueVehicle, V.CurrentValueVehicle - ((V.CurrentValueVehicle / 100) * 5)
+    FROM VehicleTypes VT INNER JOIN Vehicles V
+      ON VT.IdVehicleType = V.VehicleType
+    WHERE VT.DescriptionVehicleType NOT IN ('Moped', 'Moped', 'Trike motorcycle', 
+                                            'Car', 'Light rigid heavy vehicle', 
+                                            'Medium rigid heavy vehicle');
+                                            
+                                            
+  CREATE OR REPLACE PROCEDURE ProcDecreaseValueVehicles(VehicleId IN number) AS
+  response NUMBER := 0;
+BEGIN
+    UPDATE 
+    (
+        SELECT V.CurrentValueVehicle OLD, V.CurrentValueVehicle - ((V.CurrentValueVehicle / 100) * 2) NEW
+        FROM VehicleTypes VT INNER JOIN Vehicles V
+          ON VT.IdVehicleType = V.VehicleType
+        WHERE VT.DescriptionVehicleType IN ('Moped', 'Moped', 'Trike motorcycle')
+              AND V.IdVehicle = VehicleId
+    ) Temp
+    SET Temp.OLD = Temp.NEW;    
+    
+    UPDATE 
+    (
+        SELECT V.CurrentValueVehicle OLD, V.CurrentValueVehicle - ((V.CurrentValueVehicle / 100) * 3) NEW
+        FROM VehicleTypes VT INNER JOIN Vehicles V
+          ON VT.IdVehicleType = V.VehicleType
+        WHERE VT.DescriptionVehicleType IN ('Car', 'Light rigid heavy vehicle', 'Medium rigid heavy vehicle')
+              AND V.IdVehicle = VehicleId
+    ) Temp
+    SET Temp.OLD = Temp.NEW;
+    
+    UPDATE 
+    (
+        SELECT V.CurrentValueVehicle OLD, V.CurrentValueVehicle - ((V.CurrentValueVehicle / 100) * 5) NEW
+        FROM VehicleTypes VT INNER JOIN Vehicles V
+          ON VT.IdVehicleType = V.VehicleType
+        WHERE VT.DescriptionVehicleType NOT IN ('Moped', 'Moped', 'Trike motorcycle', 
+                                                'Car', 'Light rigid heavy vehicle', 
+                                                'Medium rigid heavy vehicle')
+              AND V.IdVehicle = VehicleId
+    ) Temp
+    SET Temp.OLD = Temp.NEW;
+END;
+
+
+CREATE OR REPLACE PROCEDURE ProcDecreaseValueVehicles AS
+  response NUMBER := 0;
+BEGIN
+    UPDATE 
+    (
+        SELECT V.CurrentValueVehicle OLD, V.CurrentValueVehicle - ((V.CurrentValueVehicle / 100) * 2) NEW
+        FROM VehicleTypes VT INNER JOIN Vehicles V
+          ON VT.IdVehicleType = V.VehicleType
+        WHERE VT.DescriptionVehicleType IN ('Moped', 'Moped', 'Trike motorcycle')
+    ) Temp
+    SET Temp.OLD = Temp.NEW;    
+    
+    UPDATE 
+    (
+        SELECT V.CurrentValueVehicle OLD, V.CurrentValueVehicle - ((V.CurrentValueVehicle / 100) * 3) NEW
+        FROM VehicleTypes VT INNER JOIN Vehicles V
+          ON VT.IdVehicleType = V.VehicleType
+        WHERE VT.DescriptionVehicleType IN ('Car', 'Light rigid heavy vehicle', 'Medium rigid heavy vehicle')
+    ) Temp
+    SET Temp.OLD = Temp.NEW;
+    
+    UPDATE 
+    (
+        SELECT V.CurrentValueVehicle OLD, V.CurrentValueVehicle - ((V.CurrentValueVehicle / 100) * 5) NEW
+        FROM VehicleTypes VT INNER JOIN Vehicles V
+          ON VT.IdVehicleType = V.VehicleType
+        WHERE VT.DescriptionVehicleType NOT IN ('Moped', 'Moped', 'Trike motorcycle', 
+                                                'Car', 'Light rigid heavy vehicle', 
+                                                'Medium rigid heavy vehicle')
+    ) Temp
+    SET Temp.OLD = Temp.NEW;
+END;
+      
+EXEC ProcDecreaseValueVehicles();
