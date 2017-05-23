@@ -1,0 +1,30 @@
+CREATE OR REPLACE FUNCTION Serie
+RETURN number IS
+ LCalc number(2) := 0;
+  
+BEGIN
+     FOR Lcntr IN 0..100
+      LOOP
+        LCalc :=(2/power(3,Lcntr))+LCalc;
+       DBMS_OUTPUT.PUT_LINE(LCalc);
+       
+    END LOOP;
+  RETURN LCalc;
+END;
+
+SELECT Serie FROM DUAL;
+
+RMAN
+---------
+
+rman target/
+
+run
+{
+	shutdown immediate
+	startup mount
+	BACKUP AS BACKUPSET DATABASE PLUS ARCHIVELOG;
+}
+
+
+
